@@ -4,17 +4,15 @@ import fs from "fs";
 import TelegramBot from "node-telegram-bot-api";
 import QRCode from "qrcode";
 
-// ====== CONFIG ======
-const TOKEN = process.env.BOT_TOKEN; // Your Telegram bot token
+const TOKEN = process.env.BOT_TOKEN;
 const WEBHOOK_URL = process.env.WEBHOOK_URL; // e.g., https://your-app.onrender.com/bot
 const PORT = process.env.PORT || 3000;
 const DB_FILE = "users.json";
 
-// ====== INIT EXPRESS ======
 const app = express();
 app.use(bodyParser.json());
 
-// ====== LOAD DATABASE ======
+// ===== Load DB =====
 let users = {};
 if (fs.existsSync(DB_FILE)) {
   users = JSON.parse(fs.readFileSync(DB_FILE));
@@ -24,13 +22,13 @@ function saveDB() {
   fs.writeFileSync(DB_FILE, JSON.stringify(users, null, 2));
 }
 
-// ====== INIT TELEGRAM BOT (WEBHOOK MODE) ======
-const bot = new TelegramBot(TOKEN); // Do NOT assign port here
-bot.setWebHook(`${WEBHOOK_URL}`);  // Webhook points to your Render URL
+// ===== Initialize Bot =====
+const bot = new TelegramBot(TOKEN, { webHook: false }); // do NOT assign port
 
-// ====== EXPRESS ROUTES ======
+// Set webhook once
+bot.setWebHook(WEBHOOK_URL).then(() => console.log("Webhook set successfully"));
 
-// Homepage
+// ===== Express Routes =====
 app.get("/", (req, res) => {
   res.send(`
     <h1>🤖 BOT BY @SHUBHxAR</h1>
@@ -45,9 +43,7 @@ app.post("/bot", (req, res) => {
   res.sendStatus(200);
 });
 
-// ====== BOT LOGIC ======
-
-// Helper: initialize new user
+// ===== Helper =====
 function initUser(chatId) {
   if (!users[chatId]) {
     users[chatId] = { upiIds: [], selectedUpi: null };
@@ -55,13 +51,12 @@ function initUser(chatId) {
   }
 }
 
-// /start command
+// ===== Bot Logic =====
 bot.onText(/\/start/, (msg) => {
   const chatId = msg.chat.id;
   initUser(chatId);
 
   const username = msg.from.username ? `@${msg.from.username}` : msg.from.first_name || "User";
-
   bot.sendMessage(
     chatId,
     `👋 Welcome ${username}!\n\n🔹 This bot generates **UPI QR Codes**.\n\n📌 Features:\n- Save multiple UPI IDs\n- Generate QR instantly\n\n👨‍💻 Developer: @SHUBHxAR`,
@@ -72,13 +67,11 @@ bot.onText(/\/start/, (msg) => {
   );
 });
 
-// /set <upi> command
 bot.onText(/\/set (.+)/, (msg, match) => {
   const chatId = msg.chat.id;
   initUser(chatId);
 
   const upiId = match[1].trim();
-
   if (!users[chatId].upiIds.includes(upiId)) {
     users[chatId].upiIds.push(upiId);
     saveDB();
@@ -88,14 +81,12 @@ bot.onText(/\/set (.+)/, (msg, match) => {
   }
 });
 
-// Handle all messages
 bot.on("message", async (msg) => {
   const chatId = msg.chat.id;
   const text = msg.text || "";
-
   initUser(chatId);
 
-  // "Generate QR Code" button
+  // Generate QR
   if (text === "⚡ Generate QR Code") {
     if (users[chatId].upiIds.length === 0) {
       bot.sendMessage(chatId, "❌ You haven’t set any UPI ID yet.\nUse `/set <UPI_ID>` to add one.");
@@ -106,7 +97,7 @@ bot.on("message", async (msg) => {
     return;
   }
 
-  // Amount input after UPI selected
+  // Amount input
   if (users[chatId].selectedUpi) {
     if (text.startsWith("/")) return;
 
@@ -118,7 +109,6 @@ bot.on("message", async (msg) => {
 
     const upiId = users[chatId].selectedUpi;
     const username = msg.from.username ? `@${msg.from.username}` : msg.from.first_name || "User";
-
     const upiLink = `upi://pay?pa=${encodeURIComponent(upiId)}&pn=${encodeURIComponent(
       username
     )}&am=${encodeURIComponent(amountNum.toString())}&cu=INR`;
@@ -139,7 +129,7 @@ bot.on("message", async (msg) => {
   }
 });
 
-// Handle inline UPI selection
+// Inline UPI selection
 bot.on("callback_query", (query) => {
   const chatId = query.message.chat.id;
   initUser(chatId);
@@ -152,7 +142,7 @@ bot.on("callback_query", (query) => {
   bot.sendMessage(chatId, `💰 Enter the amount for QR code for ${upiId} (numbers only):`);
 });
 
-// ====== START EXPRESS SERVER ======
+// ===== Start Express Server =====
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
 });
