@@ -5,9 +5,9 @@ import TelegramBot from "node-telegram-bot-api";
 import QRCode from "qrcode";
 
 // ====== CONFIG ======
-const TOKEN = process.env.BOT_TOKEN; // set in Render environment variables
+const TOKEN = process.env.BOT_TOKEN; // 8280853624:AAFfF2fSRHQgg6FZsWZlqlYzRQDvgWCZYpo
 const PORT = process.env.PORT || 3000;
-const WEBHOOK_URL = process.env.WEBHOOK_URL; // Render service public URL + /bot
+const WEBHOOK_URL = process.env.WEBHOOK_URL; // Render URL + /bot
 const DB_FILE = "users.json";
 
 // ====== INIT ======
@@ -27,7 +27,18 @@ function saveDB() {
 // ====== Set Webhook ======
 bot.setWebHook(`${WEBHOOK_URL}`);
 
-// ====== Handle incoming updates ======
+// ====== Express Routes ======
+
+// Homepage for Render URL
+app.get("/", (req, res) => {
+  res.send(`
+    <h1>🤖 BOT BY @SHUBHxAR</h1>
+    <p>BOT USERNAME - @QR_GENERATOR_01_BOT</p>
+    <p>Use this bot on Telegram to generate UPI QR Codes.</p>
+  `);
+});
+
+// Webhook endpoint for Telegram
 app.post("/bot", (req, res) => {
   bot.processUpdate(req.body);
   res.sendStatus(200);
