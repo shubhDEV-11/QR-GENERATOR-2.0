@@ -5,13 +5,13 @@ import TelegramBot from "node-telegram-bot-api";
 import QRCode from "qrcode";
 
 // ====== CONFIG ======
-const TOKEN = process.env.BOT_TOKEN; // Set in Render
-const PORT = process.env.PORT || 3000;
+const TOKEN = process.env.BOT_TOKEN; // Your Telegram bot token
 const WEBHOOK_URL = process.env.WEBHOOK_URL; // e.g., https://your-app.onrender.com/bot
+const PORT = process.env.PORT || 3000;
 const DB_FILE = "users.json";
 
 // ====== INIT ======
-const bot = new TelegramBot(TOKEN, { webHook: { port: PORT } }); // webhook mode
+const bot = new TelegramBot(TOKEN, { webHook: { port: PORT } });
 bot.setWebHook(`${WEBHOOK_URL}`);
 
 const app = express();
