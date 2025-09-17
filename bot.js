@@ -47,9 +47,19 @@ app.post("/bot", (req, res) => {
 
 // ====== BOT LOGIC ======
 
+// Helper: initialize new user
+function initUser(chatId) {
+  if (!users[chatId]) {
+    users[chatId] = { upiIds: [], selectedUpi: null };
+    saveDB();
+  }
+}
+
 // /start command
 bot.onText(/\/start/, (msg) => {
   const chatId = msg.chat.id;
+  initUser(chatId);
+
   const username = msg.from.username ? `@${msg.from.username}` : msg.from.first_name || "User";
 
   bot.sendMessage(
@@ -65,9 +75,10 @@ bot.onText(/\/start/, (msg) => {
 // /set <upi> command
 bot.onText(/\/set (.+)/, (msg, match) => {
   const chatId = msg.chat.id;
+  initUser(chatId);
+
   const upiId = match[1].trim();
 
-  if (!users[chatId]) users[chatId] = { upiIds: [] };
   if (!users[chatId].upiIds.includes(upiId)) {
     users[chatId].upiIds.push(upiId);
     saveDB();
@@ -77,13 +88,16 @@ bot.onText(/\/set (.+)/, (msg, match) => {
   }
 });
 
-// Handle "Generate QR Code" button
+// Handle all messages
 bot.on("message", async (msg) => {
   const chatId = msg.chat.id;
   const text = msg.text || "";
 
+  initUser(chatId);
+
+  // "Generate QR Code" button
   if (text === "⚡ Generate QR Code") {
-    if (!users[chatId] || users[chatId].upiIds.length === 0) {
+    if (users[chatId].upiIds.length === 0) {
       bot.sendMessage(chatId, "❌ You haven’t set any UPI ID yet.\nUse `/set <UPI_ID>` to add one.");
       return;
     }
@@ -93,7 +107,7 @@ bot.on("message", async (msg) => {
   }
 
   // Amount input after UPI selected
-  if (users[chatId] && users[chatId].selectedUpi) {
+  if (users[chatId].selectedUpi) {
     if (text.startsWith("/")) return;
 
     const amountNum = parseFloat(text.replace(/,/g, "").trim());
@@ -120,7 +134,7 @@ bot.on("message", async (msg) => {
       bot.sendMessage(chatId, "❌ Error generating QR Code. Try again.");
     }
 
-    delete users[chatId].selectedUpi;
+    users[chatId].selectedUpi = null;
     saveDB();
   }
 });
@@ -128,9 +142,9 @@ bot.on("message", async (msg) => {
 // Handle inline UPI selection
 bot.on("callback_query", (query) => {
   const chatId = query.message.chat.id;
-  const upiId = query.data.replace("upi_", "");
+  initUser(chatId);
 
-  if (!users[chatId]) users[chatId] = { upiIds: [] };
+  const upiId = query.data.replace("upi_", "");
   users[chatId].selectedUpi = upiId;
   saveDB();
 
