@@ -10,14 +10,11 @@ const WEBHOOK_URL = process.env.WEBHOOK_URL; // e.g., https://your-app.onrender.
 const PORT = process.env.PORT || 3000;
 const DB_FILE = "users.json";
 
-// ====== INIT ======
-const bot = new TelegramBot(TOKEN, { webHook: { port: PORT } });
-bot.setWebHook(`${WEBHOOK_URL}`);
-
+// ====== INIT EXPRESS ======
 const app = express();
 app.use(bodyParser.json());
 
-// ====== Load DB ======
+// ====== LOAD DATABASE ======
 let users = {};
 if (fs.existsSync(DB_FILE)) {
   users = JSON.parse(fs.readFileSync(DB_FILE));
@@ -27,7 +24,13 @@ function saveDB() {
   fs.writeFileSync(DB_FILE, JSON.stringify(users, null, 2));
 }
 
-// ====== Express Routes ======
+// ====== INIT TELEGRAM BOT (WEBHOOK MODE) ======
+const bot = new TelegramBot(TOKEN); // Do NOT assign port here
+bot.setWebHook(`${WEBHOOK_URL}`);  // Webhook points to your Render URL
+
+// ====== EXPRESS ROUTES ======
+
+// Homepage
 app.get("/", (req, res) => {
   res.send(`
     <h1>🤖 BOT BY @SHUBHxAR</h1>
@@ -42,9 +45,9 @@ app.post("/bot", (req, res) => {
   res.sendStatus(200);
 });
 
-// ====== Bot Logic ======
+// ====== BOT LOGIC ======
 
-// /start
+// /start command
 bot.onText(/\/start/, (msg) => {
   const chatId = msg.chat.id;
   const username = msg.from.username ? `@${msg.from.username}` : msg.from.first_name || "User";
@@ -59,7 +62,7 @@ bot.onText(/\/start/, (msg) => {
   );
 });
 
-// /set <upi>
+// /set <upi> command
 bot.onText(/\/set (.+)/, (msg, match) => {
   const chatId = msg.chat.id;
   const upiId = match[1].trim();
@@ -74,7 +77,7 @@ bot.onText(/\/set (.+)/, (msg, match) => {
   }
 });
 
-// Handle "Generate QR Code"
+// Handle "Generate QR Code" button
 bot.on("message", async (msg) => {
   const chatId = msg.chat.id;
   const text = msg.text || "";
@@ -89,7 +92,7 @@ bot.on("message", async (msg) => {
     return;
   }
 
-  // Amount input
+  // Amount input after UPI selected
   if (users[chatId] && users[chatId].selectedUpi) {
     if (text.startsWith("/")) return;
 
@@ -135,7 +138,7 @@ bot.on("callback_query", (query) => {
   bot.sendMessage(chatId, `💰 Enter the amount for QR code for ${upiId} (numbers only):`);
 });
 
-// ====== Start Express Server ======
+// ====== START EXPRESS SERVER ======
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
 });
